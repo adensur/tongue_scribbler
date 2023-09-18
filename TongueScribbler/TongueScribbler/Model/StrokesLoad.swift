@@ -15,7 +15,8 @@ enum StrokePathComponent {
     case closeSubpath
 }
 
-struct StrokeData {
+struct StrokeData: Identifiable {
+    var id: Int
     var outline: [StrokePathComponent]
     var medians: [CGPoint]
 }
@@ -95,7 +96,7 @@ fileprivate func parseData(_ data: CharacterData, character: String) -> TCharact
     }
     var strokes: [StrokeData] = []
     for idx in 0..<data.medians.count {
-        strokes.append(StrokeData(outline: parseSVGPath(data.strokes[idx]), medians: parseMedians(data.medians[idx])))
+        strokes.append(StrokeData(id: idx, outline: parseSVGPath(data.strokes[idx]), medians: parseMedians(data.medians[idx])))
     }
     return TCharacter(character: character, strokes: strokes)
 }

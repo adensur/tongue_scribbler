@@ -41,7 +41,7 @@ struct ContentView: View {
     @State private var drawProgress = 1.0
     var body: some View {
         VStack {
-            CharacterView(character: characterHolder.data["我"]!)
+            AnimatableCharacterView(character: characterHolder.data["我"]!)
         }
         .padding()
     }
