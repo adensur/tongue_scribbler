@@ -11,6 +11,12 @@ fileprivate func scalePoint(_ point: CGPoint, scale: Double) -> CGPoint {
     return CGPoint(x: point.x * scale, y: point.y * scale)
 }
 
+fileprivate func scalePoints(_ points: [CGPoint], scale: Double) -> [CGPoint] {
+    return points.map {point in
+        return scalePoint(point, scale: scale)
+    }
+}
+
 fileprivate func processPathComponents(components: [StrokePathComponent], scaleFactor: Double, path: inout Path) {
     for component in components {
         switch component {
@@ -82,8 +88,8 @@ struct CharacterView: View {
 
 struct AnimatableCharacterView: View {
     let character: TCharacter
-    @State var outlineIsSolid = true
-    @State var drawProgress: [Double] = []
+    @State private var outlineIsSolid = true
+    @State private var drawProgress: [Double] = []
     var body: some View {
         VStack {
             ZStack {
@@ -108,11 +114,134 @@ struct AnimatableCharacterView: View {
                         drawProgress[idx] = 1.0
                     }
                 }
+                // return to initial state
+                outlineIsSolid = true
+                drawProgress = character.strokes.map {_ in
+                    return 0.0
+                }
             }
         }
         .onAppear {
             drawProgress = character.strokes.map {_ in
                 return 0.0
+            }
+        }
+    }
+}
+
+struct Particle {
+    var position: CGPoint
+    let deathDate = Date.now.timeIntervalSinceReferenceDate + 2
+}
+
+class UserStroke {
+    var particles: [Particle] = []
+    var points: [CGPoint] = []
+    func addPoint(_ point: CGPoint) {
+        particles.append(.init(position: point))
+        points.append(point)
+    }
+    func update(date: TimeInterval) {
+        particles = particles.filter { $0.deathDate > date }
+    }
+}
+
+class UserStrokes {
+    var strokes: [UserStroke] = [.init()]
+    func update(date: TimeInterval) {
+        var toRemove = IndexSet()
+        for (index, stroke) in strokes.enumerated() {
+            stroke.update(date: date)
+            if index != strokes.indices.last! && stroke.particles.isEmpty {
+                toRemove.insert(index)
+            }
+        }
+        strokes.remove(atOffsets: toRemove)
+    }
+}
+
+struct QuizCharacterView : View {
+    let character: TCharacter
+    var userStrokes = UserStrokes()
+    @State private var currentMatchingIdx = 0
+    @State private var allMatched = false
+    @State private var failsInARow = 0
+    @State private var drawProgress = 0.0
+    var body: some View {
+        VStack {
+            ZStack {
+                ForEach(0..<character.strokes.count, id: \.self) {idx in
+                    TStrokeOutlineShape(outline: character.strokes[idx].outline)
+                        .fill(currentMatchingIdx > idx ? .black : .gray)
+                }
+                if currentMatchingIdx < character.strokes.count {
+                    TStrokeShape(medians: character.strokes[currentMatchingIdx].medians)
+                        .trim(to: drawProgress)
+                        .stroke(.red, style: StrokeStyle(lineWidth: 50, lineCap: .round, lineJoin: .miter))
+                        .mask {
+                            TStrokeOutlineShape(outline: character.strokes[currentMatchingIdx].outline)
+                        }
+                }
+                GeometryReader {proxy in
+                    TimelineView(.animation) {timeline in
+                        Canvas {ctx, size in
+                            let timelineDate = timeline.date.timeIntervalSinceReferenceDate
+                            userStrokes.update(date: timelineDate)
+                            ctx.blendMode = .plusLighter
+                            ctx.addFilter(.blur(radius: 5))
+                            ctx.addFilter(.alphaThreshold(min: 0.3, color: .cyan))
+                            for stroke in userStrokes.strokes {
+                                var path = Path()
+                                if let first = stroke.particles.first {
+                                    path.move(to: first.position)
+                                    for particle in stroke.particles.dropFirst() {
+                                        ctx.opacity = particle.deathDate - timelineDate
+                                        path.addLine(to: particle.position)
+                                        ctx.stroke(path, with: .color(.cyan), lineWidth: 15)
+                                        path = Path()
+                                        path.move(to: particle.position)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .gesture(DragGesture(minimumDistance: 0)
+                        .onChanged {drag in
+                            if let stroke = userStrokes.strokes.last {
+                                stroke.addPoint(drag.location)
+                            }
+                        }
+                        .onEnded {drag in
+                            // match the previous stroke
+                            if !allMatched {
+                                let size = min(proxy.size.width, proxy.size.height)
+                                if strokesMatch(userStroke: scalePoints(userStrokes.strokes.last!.points, scale: 1 / size), characterStroke: character.strokes[currentMatchingIdx].medians) {
+                                    currentMatchingIdx += 1
+                                    if currentMatchingIdx == character.strokes.count {
+                                        allMatched = true
+                                    }
+                                } else {
+                                    // trigger stroke animation after N successive failures
+                                    failsInARow += 1
+                                    if failsInARow >= 3 {
+                                        withAnimation(.easeInOut(duration: 0.5)) {
+                                            drawProgress = 1.0
+                                        }
+                                        withAnimation(.easeInOut(duration: 0.05).delay(0.6)) {
+                                            drawProgress = 0
+                                        }
+                                        failsInARow = 0
+                                    }
+                                }
+                            }
+                            userStrokes.strokes.append(.init())
+                        }
+                    )
+                }
+            }
+            Button("Reset") {
+                currentMatchingIdx = 0
+                allMatched = false
             }
         }
     }

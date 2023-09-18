@@ -41,8 +41,9 @@ struct ContentView: View {
     @State private var drawProgress = 1.0
     var body: some View {
         VStack {
-            AnimatableCharacterView(character: characterHolder.data["我"]!)
+            QuizCharacterView(character: characterHolder.data["我"]!)
         }
+        .preferredColorScheme(.light)
         .padding()
     }
 }
