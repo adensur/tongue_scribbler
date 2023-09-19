@@ -168,8 +168,12 @@ struct QuizCharacterView : View {
     @State private var failsInARow = 0
     @State private var drawProgress = 0.0
     @State private var showOutline = true
+    @State private var matchFinishedFlash = false
     
     func outlineColour(idx: Int) -> Color {
+        if matchFinishedFlash {
+            return .blue
+        }
         if currentMatchingIdx > idx {
             return .black
         }
@@ -235,6 +239,12 @@ struct QuizCharacterView : View {
                                     }
                                     if currentMatchingIdx == character.strokes.count {
                                         allMatched = true
+                                        withAnimation(.easeInOut(duration: 0.3).delay(0.5)) {
+                                            matchFinishedFlash = true
+                                        }
+                                        withAnimation(.easeInOut(duration: 0.3).delay(0.8)) {
+                                            matchFinishedFlash = false
+                                        }
                                     }
                                 } else {
                                     // trigger stroke animation after N successive failures
