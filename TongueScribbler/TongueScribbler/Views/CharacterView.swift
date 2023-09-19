@@ -131,7 +131,7 @@ struct AnimatableCharacterView: View {
 
 struct Particle {
     var position: CGPoint
-    let deathDate = Date.now.timeIntervalSinceReferenceDate + 2
+    let deathDate = Date.now.timeIntervalSinceReferenceDate + 1.0
 }
 
 class UserStroke {
@@ -167,37 +167,51 @@ struct QuizCharacterView : View {
     @State private var allMatched = false
     @State private var failsInARow = 0
     @State private var drawProgress = 0.0
+    @State private var showOutline = true
+    
+    func outlineColour(idx: Int) -> Color {
+        if currentMatchingIdx > idx {
+            return .black
+        }
+        if showOutline {
+            return .gray
+        }
+        return .white.opacity(0)
+    }
+    
     var body: some View {
         VStack {
-            ZStack {
-                ForEach(0..<character.strokes.count, id: \.self) {idx in
-                    TStrokeOutlineShape(outline: character.strokes[idx].outline)
-                        .fill(currentMatchingIdx > idx ? .black : .gray)
-                }
-                if currentMatchingIdx < character.strokes.count {
-                    TStrokeShape(medians: character.strokes[currentMatchingIdx].medians)
-                        .trim(to: drawProgress)
-                        .stroke(.red, style: StrokeStyle(lineWidth: 50, lineCap: .round, lineJoin: .miter))
-                        .mask {
-                            TStrokeOutlineShape(outline: character.strokes[currentMatchingIdx].outline)
-                        }
-                }
-                GeometryReader {proxy in
+            GeometryReader {proxy in
+                let size = min(proxy.size.width, proxy.size.height)
+                ZStack {
+                    // use reversed range so that strokes drawn first are on the top
+                    ForEach((0..<character.strokes.count).reversed(), id: \.self) {idx in
+                        TStrokeOutlineShape(outline: character.strokes[idx].outline)
+                            .fill(outlineColour(idx: idx))
+                    }
+                    if currentMatchingIdx < character.strokes.count {
+                        TStrokeShape(medians: character.strokes[currentMatchingIdx].medians)
+                            .trim(to: drawProgress)
+                            .stroke(.blue.opacity(0.7), style: StrokeStyle(lineWidth: 50, lineCap: .round, lineJoin: .miter))
+                            .mask {
+                                TStrokeOutlineShape(outline: character.strokes[currentMatchingIdx].outline)
+                            }
+                    }
                     TimelineView(.animation) {timeline in
                         Canvas {ctx, size in
                             let timelineDate = timeline.date.timeIntervalSinceReferenceDate
                             userStrokes.update(date: timelineDate)
                             ctx.blendMode = .plusLighter
-                            ctx.addFilter(.blur(radius: 5))
-                            ctx.addFilter(.alphaThreshold(min: 0.3, color: .cyan))
+                            ctx.addFilter(.blur(radius: 3))
+                            ctx.addFilter(.alphaThreshold(min: 0.3, color: .black))
                             for stroke in userStrokes.strokes {
                                 var path = Path()
                                 if let first = stroke.particles.first {
                                     path.move(to: first.position)
                                     for particle in stroke.particles.dropFirst() {
-                                        ctx.opacity = particle.deathDate - timelineDate
+                                        ctx.opacity = (particle.deathDate - timelineDate) * 1.5
                                         path.addLine(to: particle.position)
-                                        ctx.stroke(path, with: .color(.cyan), lineWidth: 15)
+                                        ctx.stroke(path, with: .color(.black), lineWidth: 10)
                                         path = Path()
                                         path.move(to: particle.position)
                                     }
@@ -214,9 +228,11 @@ struct QuizCharacterView : View {
                         .onEnded {drag in
                             // match the previous stroke
                             if !allMatched {
-                                let size = min(proxy.size.width, proxy.size.height)
                                 if strokesMatch(userStroke: scalePoints(userStrokes.strokes.last!.points, scale: 1 / size), characterStroke: character.strokes[currentMatchingIdx].medians) {
-                                    currentMatchingIdx += 1
+                                    failsInARow = 0
+                                    withAnimation(.easeInOut(duration: 0.6)) {
+                                        currentMatchingIdx += 1
+                                    }
                                     if currentMatchingIdx == character.strokes.count {
                                         allMatched = true
                                     }
@@ -230,7 +246,6 @@ struct QuizCharacterView : View {
                                         withAnimation(.easeInOut(duration: 0.05).delay(0.6)) {
                                             drawProgress = 0
                                         }
-                                        failsInARow = 0
                                     }
                                 }
                             }
@@ -238,6 +253,12 @@ struct QuizCharacterView : View {
                         }
                     )
                 }
+                .frame(width: size, height: size)
+                .border(.gray)
+            }
+            
+            Toggle(isOn: $showOutline) {
+                Text("Show Outline")
             }
             Button("Reset") {
                 currentMatchingIdx = 0
