@@ -7,32 +7,77 @@
 
 import SwiftUI
 
-struct MedianPath: Shape {
-    let arrayOfPairs: [[[Int]]] = [
-        [[458,627],[392,631],[336,588],[274,552],[258,550],[253,542],[220,530],[212,532],[203,522]],
-        [[174,404],[215,398],[241,402],[672,514],[742,512]],
-        [[323,556],[351,542],[365,522],[361,116],[340,67],[246,113]],
-        [[100,206],[124,195],[163,189],[492,334]],
-        [[492,807],[537,760],[538,627],[569,435],[612,299],[676,170],[717,112],[779,48],[817,22],[859,12],[880,78],[891,140],[886,147],[894,173]],
-        [[723,412],[737,365],[664,259],[594,198],[489,142],[454,132]],
-        [[657,710],[750,668],[781,634]]
-    ]
-    
-    func convert(_ val: Int) -> Double {
-        return Double(val) / 1024.0
+
+struct ArcPath: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.size.width
+        let scaleWidth = 70.6
+        func scale(_ d: Double) -> Double {
+            return d * width / scaleWidth
+        }
+        path.move(to: CGPoint(x: 0, y: 0))
+        
+//        let startPoint = CGPoint(x: 40.79, y: 139.78)
+        let startPoint = path.currentPoint!
+        let to = CGPoint(x: scale(35), y: scale(35))
+        let radius = 138.51
+        let sweep = false
+        let largeArc = false
+        let centers = findArcCenter(start: startPoint, end: to, radius: radius)!
+        print("centers: ", centers)
+        let quarter = getQuarter(startPoint, to)
+        let center: CGPoint
+        if quarter == .first || quarter == .second {
+            center = sweep ? centers.1 : centers.0
+        } else {
+            center = sweep ? centers.0 : centers.1
+        }
+        var startAngle = Angle(degrees: atan2(startPoint.y - center.y, startPoint.x - center.x) * 180 / .pi)
+        var endAngle = Angle(degrees: atan2(to.y - center.y, to.x - center.x) * 180 / .pi)
+        print("Original start/end angle, sweep: ", startAngle, endAngle, sweep)
+        print("Start point \(startPoint), end point \(to), center: \(center)")
+        let minAngle = min(startAngle, endAngle)
+        let maxAngle = max(startAngle, endAngle)
+        if maxAngle.radians - minAngle.radians <= .pi {
+            if largeArc {
+                startAngle = maxAngle
+                endAngle = minAngle
+            } else {
+                startAngle = minAngle
+                endAngle = maxAngle
+            }
+        } else {
+            if largeArc {
+                startAngle = minAngle
+                endAngle = maxAngle
+            } else {
+                startAngle = maxAngle
+                endAngle = minAngle
+            }
+        }
+        print("Normalised start/end angle: ", startAngle, endAngle)
+        path.addArc(center: center, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: false)
+        path.addLine(to: CGPoint(x: scale(0), y: scale(35)))
+        path.closeSubpath()
+        return path
     }
-    
+}
+
+struct MyLine: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let width = rect.size.width
         let height = rect.size.height
-        for stroke in arrayOfPairs {
-            let first = stroke.first!
-            path.move(to: CGPoint(x: convert(first[0]) * width, y: height-convert(first[1]) * height))
-            for point in stroke.dropFirst() {
-                path.addLine(to: CGPoint(x: convert(point[0]) * width, y: height-convert(point[1]) * height))
-            }
+        let scaleWidth = 70.6
+        let scaleHeight = 70.6
+        func scale(_ d: Double) -> Double {
+            return d * width / scaleWidth
         }
+        let start = CGPoint(x: scale(41.12), y: scale(39.66))
+        path.move(to: start)
+        let end = CGPoint(x: scale(41.2), y: scale(41.3))
+        path.addLine(to: end)
         return path
     }
 }
@@ -41,7 +86,34 @@ struct ContentView: View {
     @State private var drawProgress = 1.0
     var body: some View {
         VStack {
-            QuizCharacterView(character: characterHolder.data["我"]!)
+            TCharacterOutlineShape(character: characterHolder.data["अ"]!)
+//                .stroke(lineWidth: 5)
+                .fill(.black)
+                .frame(width: 256, height: 256)
+//            ZStack {
+//                TCharacterOutlineShape(character: characterHolder.data["a"]!)
+//                    .fill(.red)
+//                TCharacterOutlineShape(character: characterHolder.data["b"]!)
+//                    .fill(.orange)
+//                TCharacterOutlineShape(character: characterHolder.data["c"]!)
+//                    .fill(.yellow)
+//                TCharacterOutlineShape(character: characterHolder.data["d"]!)
+//                    .fill(.green)
+//                TCharacterOutlineShape(character: characterHolder.data["e"]!)
+//                    .fill(.cyan)
+//                TCharacterOutlineShape(character: characterHolder.data["f"]!)
+//                    .fill(.indigo)
+//                TCharacterOutlineShape(character: characterHolder.data["g"]!)
+//                    .fill(.mint)
+//                TCharacterOutlineShape(character: characterHolder.data["h"]!)
+//                    .fill(.brown)
+//            }
+//            ZStack {
+//                ArcPath()
+//                    .fill(.black)
+//            }
+            .frame(width: 256, height: 256)
+            .border(.gray)
         }
         .preferredColorScheme(.light)
         .padding()

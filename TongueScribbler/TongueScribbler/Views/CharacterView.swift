@@ -17,8 +17,21 @@ fileprivate func scalePoints(_ points: [CGPoint], scale: Double) -> [CGPoint] {
     }
 }
 
+func normalizeAngle(_ angle: Angle) -> Angle {
+    var angle = angle
+    if angle.radians > .pi / 2.0 {
+        angle.radians -= .pi
+    }
+    if angle.radians < -.pi / 2.0 {
+        angle.radians += .pi
+    }
+    return angle
+}
+
 fileprivate func processPathComponents(components: [StrokePathComponent], scaleFactor: Double, path: inout Path) {
+    print("processPathComponents\n\n")
     for component in components {
+        print("Component: ", component)
         switch component {
         case .move(let to):
             path.move(to: scalePoint(to, scale: scaleFactor))
@@ -29,7 +42,36 @@ fileprivate func processPathComponents(components: [StrokePathComponent], scaleF
         case .addLine(let to):
             path.addLine(to: scalePoint(to, scale: scaleFactor))
         case .closeSubpath:
+            ()
             path.closeSubpath()
+        case .Arc(radiusX: let radiusX, radiusY: let radiusY, rotation: let rotation, largeArc: let largeArc, sweep: let sweep, to: let to):
+            let to = scalePoint(to, scale: scaleFactor)
+            let startPoint = path.currentPoint!
+            let radius = radiusX * scaleFactor
+            print("radius: ", radius)
+            let centers = findArcCenter(start: startPoint, end: to, radius: radius)!
+            print("Centers: ", centers)
+            // choose proper center depending on the current quarter
+            //
+            let quarter = getQuarter(startPoint, to)
+            let center: CGPoint
+            if quarter == .first || quarter == .second {
+                center = sweep ? centers.1 : centers.0
+            } else {
+                center = sweep ? centers.0 : centers.1
+            }
+            var startAngle = Angle(degrees: atan2(startPoint.y - center.y, startPoint.x - center.x) * 180 / .pi)
+            var endAngle = Angle(degrees: atan2(to.y - center.y, to.x - center.x) * 180 / .pi)
+            print("Original start/end angle, sweep: ", startAngle, endAngle, sweep)
+            print("Start point \(startPoint), end point \(to), center: \(center)")
+            var clockwise = !sweep
+            if largeArc {
+                clockwise.toggle()
+            }
+            print("Normalised start/end angle: ", startAngle, endAngle)
+            path.addArc(center: center, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: clockwise)
+            
+//            path.move(to: to)
         }
     }
 }
@@ -279,5 +321,5 @@ struct QuizCharacterView : View {
 }
 
 #Preview {
-    CharacterView(character: characterHolder.data["我"]!)
+    CharacterView(character: characterHolder.data["अ"]!)
 }
