@@ -33,25 +33,11 @@ struct CharacterData: Decodable {
     var medians: [[[Double]]]
     var width: Double?
     var height: Double?
+    var xOffset: Double?
+    var yOffset: Double?
 }
 
-fileprivate func remapPoint(_ point: CGPoint, chiHack: Bool, width: Double, height: Double) -> CGPoint {
-    // https://github.com/skishore/makemeahanzi/tree/master#graphicstxt-keys
-    if chiHack {
-        return CGPoint(
-            x: point.x / 1024,
-            y: (900 - point.y) / 1024.0
-        )
-    } else {
-        return CGPoint(
-            x: point.x / width,
-            y: point.y / height
-        )
-    }
-        
-}
-
-fileprivate func parseSVGPath(_ path: String, chiHack: Bool, width: Double, height: Double) -> [StrokePathComponent] {
+fileprivate func parseSVGPath(_ path: String, remapPoint: (CGPoint) -> CGPoint, radiusScale: Double) -> [StrokePathComponent] {
     let commands = path.split(separator: " ")
     var index = 0
     var result: [StrokePathComponent] = []
@@ -62,7 +48,7 @@ fileprivate func parseSVGPath(_ path: String, chiHack: Bool, width: Double, heig
         case "M":
             let x = CGFloat(Double(commands[index + 1])!)
             let y = CGFloat(Double(commands[index + 2])!)
-            let point = remapPoint(CGPoint(x: x, y: y), chiHack: chiHack, width: width, height: height)
+            let point = remapPoint(CGPoint(x: x, y: y))
             result.append(.move(to: point))
             index += 3
         case "Q":
@@ -70,13 +56,13 @@ fileprivate func parseSVGPath(_ path: String, chiHack: Bool, width: Double, heig
             let y1 = CGFloat(Double(commands[index + 2])!)
             let x2 = CGFloat(Double(commands[index + 3])!)
             let y2 = CGFloat(Double(commands[index + 4])!)
-            result.append(.addQuadCurve(to: remapPoint(CGPoint(x: x2, y: y2), chiHack: chiHack, width: width, height: height),
-                                        control: remapPoint(CGPoint(x: x1, y: y1), chiHack: chiHack, width: width, height: height)))
+            result.append(.addQuadCurve(to: remapPoint(CGPoint(x: x2, y: y2)),
+                                        control: remapPoint(CGPoint(x: x1, y: y1))))
             index += 5
         case "L":
             let x = CGFloat(Double(commands[index + 1])!)
             let y = CGFloat(Double(commands[index + 2])!)
-            result.append(.addLine(to: remapPoint(CGPoint(x: x, y: y), chiHack: chiHack, width: width, height: height)))
+            result.append(.addLine(to: remapPoint(CGPoint(x: x, y: y))))
             index += 3
         case "Z":
             result.append(.closeSubpath)
@@ -90,8 +76,11 @@ fileprivate func parseSVGPath(_ path: String, chiHack: Bool, width: Double, heig
             let x = CGFloat(Double(commands[index + 6])!)
             let y = CGFloat(Double(commands[index + 7])!)
             index += 8
-            let to = remapPoint(CGPoint(x: x, y: y), chiHack: chiHack, width: width, height: height)
-            result.append(.Arc(radiusX: rx / width, radiusY: ry / height, rotation: rotation, largeArc: largeArc, sweep: sweep, to: to))
+            let to = remapPoint(CGPoint(x: x, y: y))
+            if rx != ry {
+                fatalError("Unequal radii for svg Arc not supported.")
+            }
+            result.append(.Arc(radiusX: rx * radiusScale, radiusY: rx * radiusScale, rotation: rotation, largeArc: largeArc, sweep: sweep, to: to))
         case "C":
             let x1 = CGFloat(Double(commands[index + 1])!)
             let y1 = CGFloat(Double(commands[index + 2])!)
@@ -99,9 +88,9 @@ fileprivate func parseSVGPath(_ path: String, chiHack: Bool, width: Double, heig
             let y2 = CGFloat(Double(commands[index + 4])!)
             let x3 = CGFloat(Double(commands[index + 5])!)
             let y3 = CGFloat(Double(commands[index + 6])!)
-            result.append(.addCurve(to: remapPoint(CGPoint(x: x3, y: y3), chiHack: chiHack, width: width, height: height),
-                                    control1: remapPoint(CGPoint(x: x1, y: y1), chiHack: chiHack, width: width, height: height),
-                                    control2: remapPoint(CGPoint(x: x2, y: y2), chiHack: chiHack, width: width, height: height)))
+            result.append(.addCurve(to: remapPoint(CGPoint(x: x3, y: y3)),
+                                    control1: remapPoint(CGPoint(x: x1, y: y1)),
+                                    control2: remapPoint(CGPoint(x: x2, y: y2))))
             index += 7
         default:
             print("Index: ", index, "command: ", command)
@@ -113,14 +102,14 @@ fileprivate func parseSVGPath(_ path: String, chiHack: Bool, width: Double, heig
     return result
 }
 
-fileprivate func parseMedians(_ medians: [[Double]], chiHack: Bool, width: Double, height: Double) -> [CGPoint] {
+fileprivate func parseMedians(_ medians: [[Double]], remapPoint: (CGPoint) -> CGPoint) -> [CGPoint] {
     var result: [CGPoint] = []
     for pair in medians {
         guard pair.count == 2 else {
             fatalError("Corrupted data: parseMedians")
         }
         let point = CGPoint(x: pair[0], y: pair[1])
-        result.append(remapPoint(point, chiHack: chiHack, width: width, height: height))
+        result.append(remapPoint(point))
     }
     
     return result
@@ -132,8 +121,24 @@ fileprivate func parseData(_ data: CharacterData, character: String, chiHack: Bo
     }
     var strokes: [StrokeData] = []
     for idx in 0..<data.medians.count {
-        let outline = parseSVGPath(data.strokes[idx], chiHack: chiHack, width: data.width ?? 1024.0, height: data.height ?? 1024.0)
-        strokes.append(StrokeData(id: idx, outline: outline, medians: parseMedians(data.medians[idx], chiHack: chiHack, width: data.width ?? 1024.0, height: data.height ?? 1024.0)))
+        let remapPoint: (CGPoint) -> CGPoint
+        if chiHack {
+            remapPoint = {point in
+                return CGPoint(
+                    x: (point.x + (data.xOffset ?? 0.0)) / 1024.0,
+                    y: (900 - point.y - (data.yOffset ?? 0.0)) / 1024.0
+                )
+            }
+        } else {
+            remapPoint = {point in
+                return CGPoint(
+                    x: (point.x + (data.xOffset ?? 0.0)) / (data.width ?? 1024.0),
+                    y: (point.y + (data.yOffset ?? 0.0)) / (data.height ?? 1024.0)
+                )
+            }
+        }
+        let outline = parseSVGPath(data.strokes[idx], remapPoint: remapPoint, radiusScale: 1 / (data.width ?? 1024.0))
+        strokes.append(StrokeData(id: idx, outline: outline, medians: parseMedians(data.medians[idx], remapPoint: remapPoint)))
     }
     return TCharacter(character: character, strokes: strokes)
 }

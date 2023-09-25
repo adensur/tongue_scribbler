@@ -60,8 +60,8 @@ fileprivate func processPathComponents(components: [StrokePathComponent], scaleF
             } else {
                 center = sweep ? centers.0 : centers.1
             }
-            var startAngle = Angle(degrees: atan2(startPoint.y - center.y, startPoint.x - center.x) * 180 / .pi)
-            var endAngle = Angle(degrees: atan2(to.y - center.y, to.x - center.x) * 180 / .pi)
+            let startAngle = Angle(degrees: atan2(startPoint.y - center.y, startPoint.x - center.x) * 180 / .pi)
+            let endAngle = Angle(degrees: atan2(to.y - center.y, to.x - center.x) * 180 / .pi)
             print("Original start/end angle, sweep: ", startAngle, endAngle, sweep)
             print("Start point \(startPoint), end point \(to), center: \(center)")
             var clockwise = !sweep
@@ -202,90 +202,134 @@ class UserStrokes {
     }
 }
 
+class QuizDataModel: ObservableObject {
+    @Published var character: TCharacter
+    @Published var showOutline: Bool
+    @Published var canvasEnabled: Bool
+    @Published var currentMatchingIdx = 0
+    @Published var drawProgress: [Double] = []
+    var onSuccess: () -> Void
+    init(character: TCharacter, showOutline: Bool = true, canvasEnabled: Bool = true, onSuccess: @escaping () -> Void) {
+        self.character = character
+        self.showOutline = showOutline
+        self.canvasEnabled = canvasEnabled
+        self.onSuccess = onSuccess
+    }
+    
+    func animateStrokes() {
+        print("Data model animate strokes called!")
+        let oldProgress = drawProgress
+        for idx in 0..<drawProgress.count {
+            drawProgress[idx] = 0.0
+        }
+        var delay = 0.3
+        for idx in 0..<character.strokes.count {
+            withAnimation(.easeInOut(duration: 0.5).delay(delay)) {
+                drawProgress[idx] = 1.0
+            }
+            delay += 0.8
+        }
+        // return to initial state
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            self.drawProgress = oldProgress
+        }
+    }
+    
+    func resetProgress() {
+        currentMatchingIdx = 0
+        drawProgress = character.strokes.map {_ in
+            return 0.0
+        }
+    }
+}
+
 struct QuizCharacterView : View {
-    let character: TCharacter
-    var userStrokes = UserStrokes()
-    @State private var currentMatchingIdx = 0
-    @State private var allMatched = false
+    @ObservedObject var dataModel: QuizDataModel
+    // use state for cache. Do not observe changes
+    @State private var userStrokes = UserStrokes()
     @State private var failsInARow = 0
-    @State private var drawProgress = 0.0
-    @State private var showOutline = true
     @State private var matchFinishedFlash = false
     
     func outlineColour(idx: Int) -> Color {
         if matchFinishedFlash {
             return .blue
         }
-        if currentMatchingIdx > idx {
+        if dataModel.currentMatchingIdx > idx {
             return .black
         }
-        if showOutline {
+        if dataModel.showOutline {
             return .gray
         }
-        return .white.opacity(0)
+        return .white.opacity(.zero)
     }
-    
     var body: some View {
-        VStack {
-            GeometryReader {proxy in
+        GeometryReader {proxy in
+            VStack {
                 let size = min(proxy.size.width, proxy.size.height)
                 ZStack {
                     // use reversed range so that strokes drawn first are on the top
-                    ForEach((0..<character.strokes.count).reversed(), id: \.self) {idx in
-                        TStrokeOutlineShape(outline: character.strokes[idx].outline)
+                    // StrokeOutline - the actual drawing of a character
+                    ForEach((0..<dataModel.character.strokes.count).reversed(), id: \.self) {idx in
+                        TStrokeOutlineShape(outline: dataModel.character.strokes[idx].outline)
                             .fill(outlineColour(idx: idx))
                     }
-                    if currentMatchingIdx < character.strokes.count {
-                        TStrokeShape(medians: character.strokes[currentMatchingIdx].medians)
-                            .trim(to: drawProgress)
-                            .stroke(.blue.opacity(0.7), style: StrokeStyle(lineWidth: 50, lineCap: .round, lineJoin: .miter))
-                            .mask {
-                                TStrokeOutlineShape(outline: character.strokes[currentMatchingIdx].outline)
+                    // simple stroke along the character stroke.
+                    // since its masked by the outline, it looks good enough
+                    if dataModel.canvasEnabled && dataModel.drawProgress.count > 0 {
+                        ForEach(0..<dataModel.drawProgress.count, id: \.self) {idx in
+                            if idx < dataModel.character.strokes.count {
+                                TStrokeShape(medians: dataModel.character.strokes[idx].medians)
+                                    .trim(to: dataModel.drawProgress[idx])
+                                    .stroke(.blue.opacity(0.7), style: StrokeStyle(lineWidth: 50, lineCap: .round, lineJoin: .miter))
+                                    .mask {
+                                        TStrokeOutlineShape(outline: dataModel.character.strokes[idx].outline)
+                                    }
                             }
-                    }
-                    TimelineView(.animation) {timeline in
-                        Canvas {ctx, size in
-                            let timelineDate = timeline.date.timeIntervalSinceReferenceDate
-                            userStrokes.update(date: timelineDate)
-                            ctx.blendMode = .plusLighter
-                            ctx.addFilter(.blur(radius: 3))
-                            ctx.addFilter(.alphaThreshold(min: 0.3, color: .black))
-                            for stroke in userStrokes.strokes {
-                                var path = Path()
-                                if let first = stroke.particles.first {
-                                    path.move(to: first.position)
-                                    for particle in stroke.particles.dropFirst() {
-                                        ctx.opacity = (particle.deathDate - timelineDate) * 1.5
-                                        path.addLine(to: particle.position)
-                                        ctx.stroke(path, with: .color(.black), lineWidth: 10)
-                                        path = Path()
-                                        path.move(to: particle.position)
+                        }
+                        TimelineView(.animation) {timeline in
+                            Canvas {ctx, size in
+                                let timelineDate = timeline.date.timeIntervalSinceReferenceDate
+                                userStrokes.update(date: timelineDate)
+                                ctx.blendMode = .plusLighter
+                                ctx.addFilter(.blur(radius: 3))
+                                ctx.addFilter(.alphaThreshold(min: 0.3, color: .black))
+                                for stroke in userStrokes.strokes {
+                                    var path = Path()
+                                    if let first = stroke.particles.first {
+                                        path.move(to: first.position)
+                                        for particle in stroke.particles.dropFirst() {
+                                            ctx.opacity = (particle.deathDate - timelineDate) * 1.5
+                                            path.addLine(to: particle.position)
+                                            ctx.stroke(path, with: .color(.black), lineWidth: 10)
+                                            path = Path()
+                                            path.move(to: particle.position)
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    .gesture(DragGesture(minimumDistance: 0)
-                        .onChanged {drag in
-                            if let stroke = userStrokes.strokes.last {
-                                stroke.addPoint(drag.location)
+                        .gesture(DragGesture(minimumDistance: 0)
+                            .onChanged {drag in
+                                if let stroke = userStrokes.strokes.last {
+                                    stroke.addPoint(drag.location)
+                                }
                             }
-                        }
-                        .onEnded {drag in
-                            // match the previous stroke
-                            if !allMatched {
-                                if strokesMatch(userStroke: scalePoints(userStrokes.strokes.last!.points, scale: 1 / size), characterStroke: character.strokes[currentMatchingIdx].medians) {
+                            .onEnded {drag in
+                                // match the previous stroke
+                                if strokesMatch(userStroke: scalePoints(userStrokes.strokes.last!.points, scale: 1 / size), characterStroke: dataModel.character.strokes[dataModel.currentMatchingIdx].medians) {
                                     failsInARow = 0
                                     withAnimation(.easeInOut(duration: 0.6)) {
-                                        currentMatchingIdx += 1
+                                        dataModel.currentMatchingIdx += 1
                                     }
-                                    if currentMatchingIdx == character.strokes.count {
-                                        allMatched = true
+                                    if dataModel.currentMatchingIdx == dataModel.character.strokes.count {
                                         withAnimation(.easeInOut(duration: 0.3).delay(0.5)) {
                                             matchFinishedFlash = true
                                         }
                                         withAnimation(.easeInOut(duration: 0.3).delay(0.8)) {
                                             matchFinishedFlash = false
+                                        }
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                                            dataModel.onSuccess()
                                         }
                                     }
                                 } else {
@@ -293,28 +337,23 @@ struct QuizCharacterView : View {
                                     failsInARow += 1
                                     if failsInARow >= 3 {
                                         withAnimation(.easeInOut(duration: 0.5)) {
-                                            drawProgress = 1.0
+                                            dataModel.drawProgress[dataModel.currentMatchingIdx] = 1.0
                                         }
                                         withAnimation(.easeInOut(duration: 0.05).delay(0.6)) {
-                                            drawProgress = 0
+                                            dataModel.drawProgress[dataModel.currentMatchingIdx] = 0.0
                                         }
                                     }
                                 }
+                                userStrokes.strokes.append(.init())
                             }
-                            userStrokes.strokes.append(.init())
-                        }
-                    )
+                        )
+                    }
                 }
-                .frame(width: size, height: size)
-                .border(.gray)
             }
-            
-            Toggle(isOn: $showOutline) {
-                Text("Show Outline")
-            }
-            Button("Reset") {
-                currentMatchingIdx = 0
-                allMatched = false
+        }
+        .onAppear {
+            dataModel.drawProgress = dataModel.character.strokes.map {_ in
+                return 0.0
             }
         }
     }

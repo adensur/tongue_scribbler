@@ -68,9 +68,9 @@ struct MyLine: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let width = rect.size.width
-        let height = rect.size.height
+//        let height = rect.size.height
         let scaleWidth = 70.6
-        let scaleHeight = 70.6
+//        let scaleHeight = 70.6
         func scale(_ d: Double) -> Double {
             return d * width / scaleWidth
         }
@@ -82,38 +82,42 @@ struct MyLine: Shape {
     }
 }
 
+struct QuizControllerView : View {
+    var body: some View {
+        Text("Hello world!")
+    }
+}
+
 struct ContentView: View {
-    @State private var drawProgress = 1.0
+    let characters = ["अ", "आ", "ए", "ऐ"]
+    @State private var idx = 0
+    @ObservedObject var dataModel = QuizDataModel(character: characterHolder.data["अ"]!) {
+    }
     var body: some View {
         VStack {
-            TCharacterOutlineShape(character: characterHolder.data["अ"]!)
-//                .stroke(lineWidth: 5)
-                .fill(.black)
-                .frame(width: 256, height: 256)
-//            ZStack {
-//                TCharacterOutlineShape(character: characterHolder.data["a"]!)
-//                    .fill(.red)
-//                TCharacterOutlineShape(character: characterHolder.data["b"]!)
-//                    .fill(.orange)
-//                TCharacterOutlineShape(character: characterHolder.data["c"]!)
-//                    .fill(.yellow)
-//                TCharacterOutlineShape(character: characterHolder.data["d"]!)
-//                    .fill(.green)
-//                TCharacterOutlineShape(character: characterHolder.data["e"]!)
-//                    .fill(.cyan)
-//                TCharacterOutlineShape(character: characterHolder.data["f"]!)
-//                    .fill(.indigo)
-//                TCharacterOutlineShape(character: characterHolder.data["g"]!)
-//                    .fill(.mint)
-//                TCharacterOutlineShape(character: characterHolder.data["h"]!)
-//                    .fill(.brown)
-//            }
-//            ZStack {
-//                ArcPath()
-//                    .fill(.black)
-//            }
-            .frame(width: 256, height: 256)
-            .border(.gray)
+            if idx < characters.count {
+                QuizCharacterView(dataModel: dataModel)
+                Toggle("show outline", isOn: $dataModel.showOutline)
+                Toggle("Canvas enabled", isOn: $dataModel.canvasEnabled)
+                Button("Animate strokes") {
+                    dataModel.animateStrokes()
+                }
+                Button("reset") {
+                    dataModel.currentMatchingIdx = 0
+                }
+            } else {
+                Text("All done!")
+            }
+        }
+        .onAppear {
+            dataModel.character = characterHolder.data[characters[idx]]!
+            dataModel.onSuccess = {
+                idx += 1
+                if idx < characters.count {
+                    dataModel.resetProgress()
+                    dataModel.character = characterHolder.data[characters[idx]]!
+                }
+            }
         }
         .preferredColorScheme(.light)
         .padding()
