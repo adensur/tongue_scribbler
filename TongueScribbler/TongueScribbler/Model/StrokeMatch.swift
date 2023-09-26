@@ -76,16 +76,6 @@ func avgCosineSimilarity(_ userStroke: [CGPoint], _ characterStroke: [CGPoint]) 
     return avgSimilarity
 }
 
-func length(curve: [CGPoint]) -> CGFloat {
-    var lastPoint = curve[0]
-    let pointsSansFirst = Array(curve.dropFirst())
-    return pointsSansFirst.reduce(0.0) { (acc, point) -> CGFloat in
-        let dist = distance(lastPoint, point)
-        lastPoint = point
-        return acc + dist
-    }
-}
-
 func outlineCurve(curve: [CGPoint], numPoints: Int = 30) -> [CGPoint] {
     let curveLen = length(curve: curve)
     let segmentLen = curveLen / CGFloat(numPoints - 1)

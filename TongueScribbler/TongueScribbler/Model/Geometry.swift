@@ -53,3 +53,13 @@ func getQuarter(_ p1: CGPoint, _ p2: CGPoint) -> EQuarter {
     }
     return .first
 }
+
+func length(curve: [CGPoint]) -> CGFloat {
+    var lastPoint = curve[0]
+    let pointsSansFirst = Array(curve.dropFirst())
+    return pointsSansFirst.reduce(0.0) { (acc, point) -> CGFloat in
+        let dist = distance(lastPoint, point)
+        lastPoint = point
+        return acc + dist
+    }
+}

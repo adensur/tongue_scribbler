@@ -25,6 +25,7 @@ struct StrokeData: Identifiable {
 struct TCharacter {
     let character: String
     let strokes: [StrokeData]
+    let strokeMap: [Int]
 }
 
 struct CharacterData: Decodable {
@@ -35,6 +36,7 @@ struct CharacterData: Decodable {
     var height: Double?
     var xOffset: Double?
     var yOffset: Double?
+    var strokeMap: [Int]?
 }
 
 fileprivate func parseSVGPath(_ path: String, remapPoint: (CGPoint) -> CGPoint, radiusScale: Double) -> [StrokePathComponent] {
@@ -140,7 +142,11 @@ fileprivate func parseData(_ data: CharacterData, character: String, chiHack: Bo
         let outline = parseSVGPath(data.strokes[idx], remapPoint: remapPoint, radiusScale: 1 / (data.width ?? 1024.0))
         strokes.append(StrokeData(id: idx, outline: outline, medians: parseMedians(data.medians[idx], remapPoint: remapPoint)))
     }
-    return TCharacter(character: character, strokes: strokes)
+    let strokeMap = data.strokeMap ?? Array(0..<data.medians.count)
+    if strokeMap.count != strokes.count {
+        fatalError("Stroke map count != stroke count")
+    }
+    return TCharacter(character: character, strokes: strokes, strokeMap: strokeMap)
 }
 
 class CharacterHolder {
