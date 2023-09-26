@@ -11,9 +11,18 @@ fileprivate func scalePoint(_ point: CGPoint, scale: Double) -> CGPoint {
     return CGPoint(x: point.x * scale, y: point.y * scale)
 }
 
-fileprivate func scalePoints(_ points: [CGPoint], scale: Double) -> [CGPoint] {
+fileprivate func scalePoints(_ points: [CGPoint], width: Double, height: Double) -> [CGPoint] {
+    let size = min(width, height)
     return points.map {point in
-        return scalePoint(point, scale: scale)
+        if width < height {
+            let delta = height - width
+            let y = point.y - delta / 2.0
+            return CGPoint(x: point.x / size, y: y / size)
+        } else {
+            let delta = width - height
+            let x = point.x - delta / 2.0
+            return CGPoint(x: x / size, y: point.y / size)
+        }
     }
 }
 
@@ -321,19 +330,25 @@ struct QuizCharacterView : View {
     var body: some View {
         GeometryReader {proxy in
             VStack {
-                let size = min(proxy.size.width, proxy.size.height)
+                let width = proxy.size.width
+                let height = proxy.size.height
+                let size = min(width, height)
                 ZStack {
-                    TCrossHair()
-                        .stroke(.gray.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [6]))
-                    // use reversed range so that strokes drawn first are on the top
-                    // StrokeOutline - the actual drawing of a character
-                    ForEach((0..<dataModel.character.strokes.count).reversed(), id: \.self) {idx in
-                        TStrokeOutlineShape(outline: dataModel.character.strokes[idx].outline)
-                            .fill(outlineColour(idx: idx))
+                    Group {
+                        TCrossHair()
+                            .stroke(.gray.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [6]))
+                        // use reversed range so that strokes drawn first are on the top
+                        // StrokeOutline - the actual drawing of a character
+                        ForEach((0..<dataModel.character.strokes.count).reversed(), id: \.self) {idx in
+                            TStrokeOutlineShape(outline: dataModel.character.strokes[idx].outline)
+                                .fill(outlineColour(idx: idx))
+                        }
+                        
                     }
-                    // simple stroke along the character stroke.
-                    // since its masked by the outline, it looks good enough
+                    .frame(width: size, height: size)
                     if dataModel.drawProgress.count > 0 {
+                        // simple stroke along the character stroke.
+                        // since its masked by the outline, it looks good enough
                         ForEach(0..<dataModel.drawProgress.count, id: \.self) {idx in
                             if idx < dataModel.character.strokes.count {
                                 TStrokeShape(medians: dataModel.character.strokes[idx].medians)
@@ -344,6 +359,7 @@ struct QuizCharacterView : View {
                                     }
                             }
                         }
+                        .frame(width: size, height: size)
                         if dataModel.canvasEnabled {
                             TimelineView(.animation) {timeline in
                                 Canvas {ctx, size in
@@ -386,7 +402,7 @@ struct QuizCharacterView : View {
                                             subStrokeIndices.append(idx)
                                         }
                                     }
-                                    if strokesMatch(userStroke: scalePoints(userStrokes.strokes.last!.points, scale: 1 / size), characterStroke: mergedCharacterStroke) {
+                                    if strokesMatch(userStroke: scalePoints(userStrokes.strokes.last!.points, width: width, height: height), characterStroke: mergedCharacterStroke) {
                                         failsInARow = 0
                                         withAnimation(.easeInOut(duration: 0.6)) {
                                             dataModel.currentMatchingIdx += subStrokeCount
