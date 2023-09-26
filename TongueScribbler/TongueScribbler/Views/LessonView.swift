@@ -39,9 +39,11 @@ struct LessonView: View {
                 switch lessonStage {
                 case .characterQuiz(let quizOptions):
                     QuizCharacterView(dataModel: dataModel)
+                        .frame(width: 256, height: 256)
                 case .quizDemo(let quizOptions):
                     VStack {
                         AnimatableCharacterView(character: dataModel.character, showOutline: dataModel.showOutline)
+                            .frame(width: 256, height: 256)
                         Text("This is the demo for quiz view")
                             .padding()
                         Button("Next") {

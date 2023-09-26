@@ -119,6 +119,31 @@ struct TStrokeOutlineShape: Shape {
     }
 }
 
+struct TCrossHair: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.size.width
+        let height = rect.size.height
+        // horizontal line
+        path.move(to: CGPoint(x: 0.0, y: height / 2.0))
+        path.addLine(to: CGPoint(x: width, y: height / 2.0))
+        path.closeSubpath()
+        // vertical line
+        path.move(to: CGPoint(x: width / 2.0, y: 0.0))
+        path.addLine(to: CGPoint(x: width / 2.0, y: height))
+        path.closeSubpath()
+        // diagonal line from top left to bottom right
+        path.move(to: CGPoint(x: width / 8.0, y: height / 8.0))
+        path.addLine(to: CGPoint(x: 7.0 * width / 8.0, y: 7.0 * height / 8.0))
+        path.closeSubpath()
+        // diagonal line from top right to bottom left
+        path.move(to: CGPoint(x: 7.0 * width / 8.0, y: height / 8.0))
+        path.addLine(to: CGPoint(x: width / 8.0, y: 7.0 * height / 8.0))
+        path.closeSubpath()
+        return path
+    }
+}
+
 struct CharacterView: View {
     var character: TCharacter
     var body: some View {
@@ -137,6 +162,8 @@ struct AnimatableCharacterView: View {
             let timeDelta = timeline.date.timeIntervalSince(startDate)
             let drawProgress = computeDrawProgress(timeDelta)
             ZStack {
+                TCrossHair()
+                    .stroke(.gray.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [6]))
                 TCharacterOutlineShape(character: character)
                     .fill(showOutline ? .gray : .white.opacity(0.0))
                 ForEach(0..<drawProgress.count, id: \.self) {idx in
@@ -296,6 +323,8 @@ struct QuizCharacterView : View {
             VStack {
                 let size = min(proxy.size.width, proxy.size.height)
                 ZStack {
+                    TCrossHair()
+                        .stroke(.gray.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [6]))
                     // use reversed range so that strokes drawn first are on the top
                     // StrokeOutline - the actual drawing of a character
                     ForEach((0..<dataModel.character.strokes.count).reversed(), id: \.self) {idx in
@@ -349,10 +378,12 @@ struct QuizCharacterView : View {
                                     var mergedCharacterStroke: [CGPoint] = []
                                     var subStrokeCount = 0
                                     let strokeToMatch = dataModel.character.strokeMap[dataModel.currentMatchingIdx]
+                                    var subStrokeIndices: [Int] = []
                                     for idx in 0..<dataModel.character.strokeMap.count {
                                         if dataModel.character.strokeMap[idx] == strokeToMatch {
                                             mergedCharacterStroke.append(contentsOf: dataModel.character.strokes[idx].medians)
                                             subStrokeCount += 1
+                                            subStrokeIndices.append(idx)
                                         }
                                     }
                                     if strokesMatch(userStroke: scalePoints(userStrokes.strokes.last!.points, scale: 1 / size), characterStroke: mergedCharacterStroke) {
@@ -375,11 +406,18 @@ struct QuizCharacterView : View {
                                         // trigger stroke animation after N successive failures
                                         failsInARow += 1
                                         if failsInARow >= 3 {
-                                            withAnimation(.easeInOut(duration: 0.5)) {
-                                                dataModel.drawProgress[dataModel.currentMatchingIdx] = 1.0
+                                            var delay = 0.0
+                                            let strokeTooltipDuration = 0.5
+                                            for idx in subStrokeIndices {
+                                                withAnimation(.easeInOut(duration: strokeTooltipDuration).delay(delay)) {
+                                                    dataModel.drawProgress[idx] = 1.0
+                                                }
+                                                delay += strokeTooltipDuration
                                             }
-                                            withAnimation(.easeInOut(duration: 0.05).delay(0.6)) {
-                                                dataModel.drawProgress[dataModel.currentMatchingIdx] = 0.0
+                                            for idx in subStrokeIndices {
+                                                withAnimation(.easeInOut(duration: 0.05).delay(delay + 0.3)) {
+                                                    dataModel.drawProgress[idx] = 0.0
+                                                }
                                             }
                                         }
                                     }
