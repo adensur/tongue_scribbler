@@ -167,12 +167,13 @@ struct AnimatableCharacterView: View {
     func computeDrawProgress(_ timeDelta: TimeInterval) -> [Double] {
         var result: [Double] = []
         let initialDelay = 0.3
+        let finalDelay = 0.5
         let speed = 1.0
         let totalAnimationDuration = character.strokes.enumerated().reduce(into: initialDelay) {totalDuration, pair in
             let idx = pair.0
             let stroke = pair.1
             totalDuration += length(curve: stroke.medians) / speed + delayBetweenStrokes(idx)
-        }
+        } + finalDelay
         var accumulatedDelay = 0.0
         let modulo = timeDelta.truncatingRemainder(dividingBy: totalAnimationDuration)
         if modulo < initialDelay {
