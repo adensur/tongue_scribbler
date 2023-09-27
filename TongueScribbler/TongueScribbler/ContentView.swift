@@ -94,36 +94,15 @@ struct ContentView: View {
     @ObservedObject var dataModel = QuizDataModel(character: characterHolder.data["अ"]!) {
     }
     var body: some View {
-        LessonView(lessonStages: stages)
-//        AnimatableCharacterView(character: characterHolder.data["अ"]!, showOutline: false)
-//            .frame(width: 256, height: 256)
-//        VStack {
-//            if idx < characters.count {
-//                QuizCharacterView(dataModel: dataModel)
-//                Toggle("show outline", isOn: $dataModel.showOutline)
-//                Toggle("Canvas enabled", isOn: $dataModel.canvasEnabled)
-//                Button("Animate strokes") {
-//                    dataModel.animateStrokes()
-//                }
-//                Button("reset") {
-//                    dataModel.currentMatchingIdx = 0
-//                }
-//            } else {
-//                Text("All done!")
-//            }
-//        }
-//        .onAppear {
-//            dataModel.character = characterHolder.data[characters[idx]]!
-//            dataModel.onSuccess = {
-//                idx += 1
-//                if idx < characters.count {
-//                    dataModel.resetProgress()
-//                    dataModel.character = characterHolder.data[characters[idx]]!
-//                }
-//            }
-//        }
+//        LessonView(lessonStages: stages)
+        VStack {
+            AnimatableCharacterView(character: characterHolder.data["我"]!)
+//            CharacterView(character: characterHolder.data["ए"]!)
+//                .frame(width: 128, height: 128)
+//            CharacterView(character: characterHolder.data["ऐ"]!)
+//                .frame(width: 128, height: 128)
+        }
         .preferredColorScheme(.light)
-        .padding()
     }
 }
 

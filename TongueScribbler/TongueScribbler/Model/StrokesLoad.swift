@@ -173,6 +173,18 @@ class CharacterHolder {
         }
         return CharacterHolder(data: res)
     }
+    
+    static func loadAll() -> CharacterHolder {
+        var result = CharacterHolder(data: [:])
+        for source in ["chi", "hi"] {
+            let holder = Self.load(source: source)
+            result.data.merge(holder.data) {key1, key2 in
+                return key1
+            }
+        }
+        return result
+    }
 }
 
-let characterHolder = CharacterHolder.load(source: "hi")
+
+let characterHolder = CharacterHolder.loadAll()

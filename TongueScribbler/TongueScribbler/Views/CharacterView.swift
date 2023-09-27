@@ -156,35 +156,46 @@ struct TCrossHair: Shape {
 struct CharacterView: View {
     var character: TCharacter
     var body: some View {
-        TCharacterOutlineShape(character: character)
-            .fill(.black)
-            .frame(width: 256, height: 256)
+        GeometryReader {proxy in
+            let size = min(proxy.size.width, proxy.size.height)
+            ZStack {
+                TCrossHair()
+                    .stroke(.gray.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [6]))
+                TCharacterOutlineShape(character: character)
+                    .fill(.black)
+                    .frame(width: size, height: size)
+            }
+        }
     }
 }
 
 struct AnimatableCharacterView: View {
     let character: TCharacter
     @State private var startDate = Date.now
-    var showOutline: Bool
+    var showOutline: Bool = true
     var body: some View {
-        TimelineView(.animation) {timeline in
-            let timeDelta = timeline.date.timeIntervalSince(startDate)
-            let drawProgress = computeDrawProgress(timeDelta)
-            ZStack {
-                TCrossHair()
-                    .stroke(.gray.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [6]))
-                TCharacterOutlineShape(character: character)
-                    .fill(showOutline ? .gray : .white.opacity(0.0))
-                ForEach(0..<drawProgress.count, id: \.self) {idx in
-                    TStrokeShape(medians: character.strokes[idx].medians)
+        GeometryReader {proxy in
+            let size = min(proxy.size.width, proxy.size.height)
+            TimelineView(.animation) {timeline in
+                let timeDelta = timeline.date.timeIntervalSince(startDate)
+                let drawProgress = computeDrawProgress(timeDelta)
+                ZStack {
+                    TCrossHair()
+                        .stroke(.gray.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [6]))
+                    TCharacterOutlineShape(character: character)
+                        .fill(showOutline ? .gray : .white.opacity(0.0))
+                    ForEach(0..<drawProgress.count, id: \.self) {idx in
+                        TStrokeShape(medians: character.strokes[idx].medians)
                         .trim(to: drawProgress[idx])
-                        .stroke(.blue, style: StrokeStyle(lineWidth: 30, lineCap: .round, lineJoin: .round))
+                        .stroke(.blue, style: StrokeStyle(lineWidth: 60, lineCap: .round, lineJoin: .round))
                         .mask {
                             TStrokeOutlineShape(outline: character.strokes[idx].outline)
                                 .fill(.black)
                         }
+                    }
                 }
             }
+            .frame(width: size, height: size)
         }
         .onAppear {
             startDate = Date.now
