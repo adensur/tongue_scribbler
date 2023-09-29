@@ -95,12 +95,12 @@ struct ContentView: View {
     }
     var body: some View {
 //        LessonView(lessonStages: stages)
-        VStack {
-            AnimatableCharacterView(character: characterHolder.data["我"]!)
-//            CharacterView(character: characterHolder.data["ए"]!)
-//                .frame(width: 128, height: 128)
-//            CharacterView(character: characterHolder.data["ऐ"]!)
-//                .frame(width: 128, height: 128)
+        HStack {
+//            AnimatableCharacterView(character: characterHolder.data["我"]!)
+            CharacterView(character: characterHolder.data["अ"]!)
+                .frame(width: 128, height: 128)
+            CharacterView(character: characterHolder.data["ओ"]!)
+                .frame(width: 128, height: 128)
         }
         .preferredColorScheme(.light)
     }

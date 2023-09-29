@@ -37,7 +37,7 @@ func parseNumSequence(str string) []float64 {
 			}
 			buf.Reset()
 			// we still need the dot to parse next number
-			if !(ch == '.' && metDot) && !(ch == '-' && (metMinus || metDot)) {
+			if !(ch == '.' || ch == '-') {
 				idx++
 			}
 			metDot = false
@@ -295,6 +295,7 @@ func convertPath(path string) (string, []Point, error) {
 				sb.WriteString(fmt.Sprintf("%.2f %.2f %.2f %.2f %.2f %.2f", control1X, control1Y, control2X, control2Y, curX, curY))
 				medians = append(medians, Point{curX, curY})
 				idx += 6
+				prevControl = &Point{control2X, control2Y}
 			} else if command == "C" {
 				// need to read at least 6 coords
 				if idx+5 >= len(coords) {
@@ -315,6 +316,7 @@ func convertPath(path string) (string, []Point, error) {
 				sb.WriteString(fmt.Sprintf("%.2f %.2f %.2f %.2f %.2f %.2f", control1X, control1Y, control2X, control2Y, curX, curY))
 				medians = append(medians, Point{curX, curY})
 				idx += 6
+				prevControl = &Point{control2X, control2Y}
 			} else if command == "a" {
 				// need to read at least 7 coords
 				if idx+6 >= len(coords) {

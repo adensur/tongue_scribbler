@@ -53,7 +53,7 @@ fileprivate func processPathComponents(components: [StrokePathComponent], scaleF
         case .closeSubpath:
             ()
             path.closeSubpath()
-        case .Arc(radiusX: let radiusX, radiusY: let radiusY, rotation: let rotation, largeArc: let largeArc, sweep: let sweep, to: let to):
+        case .Arc(radiusX: let radiusX, largeArc: let largeArc, sweep: let sweep, to: let to):
             let to = scalePoint(to, scale: scaleFactor)
             let startPoint = path.currentPoint!
             let radius = radiusX * scaleFactor
