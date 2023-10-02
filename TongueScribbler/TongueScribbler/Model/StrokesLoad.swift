@@ -152,6 +152,7 @@ func parseNumSequence(_ str: String) throws -> [TCommand] {
                 throw svgParseError.invalidNumber
             }
         }
+        buf = ""
     }
     let flushCommand = {
         if let oldCommand = currentCommand {
@@ -174,7 +175,6 @@ func parseNumSequence(_ str: String) throws -> [TCommand] {
         }
         if ch == " " || ch == "," || (ch == "." && metDot) || (ch == "-" && (metMinus || metDot)) {
             try flushNums()
-            buf = ""
             if !(ch == "." || ch == "-") {
                 idx = str.index(after: idx)
             }
@@ -227,6 +227,7 @@ func parseSvgPath(_ path: String, remapPoint: (CGPoint) -> CGPoint, scale: Doubl
             fallthrough
         case .M:
             guard command.coords.count % 2 == 0 else {
+                print("Error when parsing command: \n\(path), command: \(command.command), coords: \(command.coords), expected coords.count % 2 == 0")
                 throw svgParseError.argumentError
             }
             for idx in stride(from: 0, to: command.coords.count, by: 2) {
@@ -245,6 +246,7 @@ func parseSvgPath(_ path: String, remapPoint: (CGPoint) -> CGPoint, scale: Doubl
             fallthrough
         case .L:
             guard command.coords.count % 2 == 0 else {
+                print("Error when parsing command: \n\(path), command: \(command.command), coords: \(command.coords), expected coords.count % 2 == 0")
                 throw svgParseError.argumentError
             }
             for idx in stride(from: 0, to: command.coords.count, by: 2) {
@@ -287,6 +289,7 @@ func parseSvgPath(_ path: String, remapPoint: (CGPoint) -> CGPoint, scale: Doubl
             fallthrough
         case .A:
             guard command.coords.count % 7 == 0 else {
+                print("Error when parsing command: \n\(path), command: \(command.command), coords: \(command.coords), expected coords.count % 7 == 0")
                 throw svgParseError.argumentError
             }
             for idx in stride(from: 0, to: command.coords.count, by: 7) {
@@ -316,6 +319,7 @@ func parseSvgPath(_ path: String, remapPoint: (CGPoint) -> CGPoint, scale: Doubl
             fallthrough
         case .C:
             guard command.coords.count % 6 == 0 else {
+                print("Error when parsing command: \n\(path), command: \(command.command), coords: \(command.coords), expected coords.count % 6 == 0")
                 throw svgParseError.argumentError
             }
             for idx in stride(from: 0, to: command.coords.count, by: 6) {
@@ -349,6 +353,7 @@ func parseSvgPath(_ path: String, remapPoint: (CGPoint) -> CGPoint, scale: Doubl
             fallthrough
         case .S:
             guard command.coords.count % 4 == 0 else {
+                print("Error when parsing command: \n\(path), command: \(command.command), coords: \(command.coords), expected coords.count % 4 == 0")
                 throw svgParseError.argumentError
             }
             for idx in stride(from: 0, to: command.coords.count, by: 6) {
@@ -379,6 +384,7 @@ func parseSvgPath(_ path: String, remapPoint: (CGPoint) -> CGPoint, scale: Doubl
             fallthrough
         case .Q:
             guard command.coords.count % 4 == 0 else {
+                print("Error when parsing command: \n\(path), command: \(command.command), coords: \(command.coords), expected coords.count % 4 == 0")
                 throw svgParseError.argumentError
             }
             for idx in stride(from: 0, to: command.coords.count, by: 4) {
@@ -402,6 +408,7 @@ func parseSvgPath(_ path: String, remapPoint: (CGPoint) -> CGPoint, scale: Doubl
             }
         case .z:
             guard command.coords.isEmpty else {
+                print("Error when parsing command: \n\(path), command: \(command.command), coords: \(command.coords), expected no coords")
                 throw svgParseError.argumentError
             }
             result.append(.closeSubpath)
@@ -469,6 +476,8 @@ class CharacterHolder {
         var res: [String: TCharacter] = [:]
         let url = if source == "chi" {
             Bundle.main.url(forResource: "chi", withExtension: "txt")!
+        } else if source == "kana" {
+            Bundle.main.url(forResource: "kana", withExtension: "json")!
         } else {
             Bundle.main.url(forResource: "hi", withExtension: "json")!
         }
@@ -485,7 +494,7 @@ class CharacterHolder {
     
     static func loadAll() throws -> CharacterHolder {
         let result = CharacterHolder(data: [:])
-        for source in ["chi", "hi"] {
+        for source in ["chi", "hi", "kana"] {
             let holder = try Self.load(source: source)
             result.data.merge(holder.data) {key1, key2 in
                 return key1

@@ -14,6 +14,7 @@
 		092F27E32AB701250093D298 /* TongueScribblerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092F27E22AB701250093D298 /* TongueScribblerTests.swift */; };
 		092F27ED2AB701250093D298 /* TongueScribblerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092F27EC2AB701250093D298 /* TongueScribblerUITests.swift */; };
 		092F27EF2AB701250093D298 /* TongueScribblerUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092F27EE2AB701250093D298 /* TongueScribblerUITestsLaunchTests.swift */; };
+		09723D3F2AC6DCBB00E667E9 /* kana.json in Resources */ = {isa = PBXBuildFile; fileRef = 09723D3E2AC6DCBB00E667E9 /* kana.json */; };
 		098B6D402AC1AE7200438D17 /* LessonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 098B6D3F2AC1AE7200438D17 /* LessonView.swift */; };
 		09949C7F2AB740B8002C308E /* StrokesLoad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09949C7E2AB740B8002C308E /* StrokesLoad.swift */; };
 		09949C812AB7413B002C308E /* chi.txt in Resources */ = {isa = PBXBuildFile; fileRef = 09949C802AB7413B002C308E /* chi.txt */; };
@@ -51,6 +52,7 @@
 		092F27E82AB701250093D298 /* TongueScribblerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TongueScribblerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		092F27EC2AB701250093D298 /* TongueScribblerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TongueScribblerUITests.swift; sourceTree = "<group>"; };
 		092F27EE2AB701250093D298 /* TongueScribblerUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TongueScribblerUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		09723D3E2AC6DCBB00E667E9 /* kana.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = kana.json; path = ../../../data/japanese/kana.json; sourceTree = "<group>"; };
 		098B6D3F2AC1AE7200438D17 /* LessonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LessonView.swift; sourceTree = "<group>"; };
 		09949C7E2AB740B8002C308E /* StrokesLoad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrokesLoad.swift; sourceTree = "<group>"; };
 		09949C802AB7413B002C308E /* chi.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = chi.txt; sourceTree = "<group>"; };
@@ -158,6 +160,7 @@
 			children = (
 				09949C802AB7413B002C308E /* chi.txt */,
 				09949C892ABAFD48002C308E /* hi.json */,
+				09723D3E2AC6DCBB00E667E9 /* kana.json */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -277,6 +280,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				09949C8A2ABAFD48002C308E /* hi.json in Resources */,
+				09723D3F2AC6DCBB00E667E9 /* kana.json in Resources */,
 				09949C812AB7413B002C308E /* chi.txt in Resources */,
 				092F27D92AB701240093D298 /* Preview Assets.xcassets in Resources */,
 				092F27D62AB701240093D298 /* Assets.xcassets in Resources */,

@@ -91,16 +91,17 @@ struct QuizControllerView : View {
 struct ContentView: View {
     let characters = ["अ", "आ", "ए", "ऐ"]
     @State private var idx = 0
-    @ObservedObject var dataModel = QuizDataModel(character: characterHolder.data["अ"]!) {
+    @ObservedObject var dataModel = QuizDataModel(character: characterHolder.data["あ"]!) {
     }
     var body: some View {
 //        LessonView(lessonStages: stages)
         HStack {
+            QuizCharacterView(dataModel: dataModel)
 //            AnimatableCharacterView(character: characterHolder.data["我"]!)
-            CharacterView(character: characterHolder.data["अ"]!)
-                .frame(width: 128, height: 128)
-            CharacterView(character: characterHolder.data["ओ"]!)
-                .frame(width: 128, height: 128)
+//            CharacterView(character: characterHolder.data["अ"]!)
+//                .frame(width: 128, height: 128)
+//            CharacterView(character: characterHolder.data["ओ"]!)
+//                .frame(width: 128, height: 128)
         }
         .preferredColorScheme(.light)
     }
