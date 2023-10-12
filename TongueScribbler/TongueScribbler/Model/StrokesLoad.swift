@@ -481,7 +481,7 @@ class CharacterHolder {
         } else {
             Bundle.main.url(forResource: "hi", withExtension: "json")!
         }
-        let chiHack = source == "chi" ? true : false
+        let chiHack = ["chi"].contains(source) ? true : false
         
         let data = try! String(contentsOf: url)
         for line in data.split(separator: "\n") {
